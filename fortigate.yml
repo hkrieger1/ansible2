@@ -1,0 +1,46 @@
+---
+- name: Configure VLANs on FortiGate under FortiLink interface with IP addresses
+  hosts: fortigate
+  gather_facts: no
+  vars:
+    fortigate_hostname: 10.10.50.110
+    fortigate_username: admin
+    fortigate_password: 1millionX2015
+    vlan_interfaces:
+      - name: Data
+        vlanid: 10
+        interface: internal
+        description: Data Vlan
+        ip_address: 10.10.10.1/24
+      - name: Wifi
+        vlanid: 15
+        interface: internal
+        description: wifi vlan
+        ip_address: 10.20.20.1/24
+    default_vlan_interface: internal
+  tasks:
+    - name: Configure VLANs on FortiGate
+      fortios_network_vlans:
+        host: "{{ fortigate_hostname }}"
+        username: "{{ fortigate_username }}"
+        password: "{{ fortigate_password }}"
+        vlans: "{{ vlan_interfaces }}"
+      register: result
+
+    - name: Set default VLAN interface
+      fortios_system_global:
+        host: "{{ fortigate_hostname }}"
+        username: "{{ fortigate_username }}"
+        password: "{{ fortigate_password }}"
+        set: "default-vlan-interface {{ default_vlan_interface }}"
+
+    - name: Assign IP addresses to VLAN interfaces
+      fortios_network_interfaces:
+        host: "{{ fortigate_hostname }}"
+        username: "{{ fortigate_username }}"
+        password: "{{ fortigate_password }}"
+        state: present
+        interface: "{{ item.name }}"
+        ip: "{{ item.ip_address.split('/')[0] }}"
+        mask: "{{ item.ip_address.split('/')[1] }}"
+      with_items: "{{ vlan_interfaces }}"
